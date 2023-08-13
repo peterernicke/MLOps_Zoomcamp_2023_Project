@@ -4,6 +4,7 @@ import pathlib
 
 from mlflow.tracking import MlflowClient
 from mlflow.entities import ViewType
+from datetime import datetime
 
 import numpy as np
 import scipy
@@ -33,7 +34,8 @@ VAL_PATH = "./data/processed/val.csv"
 TEST_PATH = "./data/processed/test.csv"
 
 MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
-EXPERIMENT_NAME = "housing-prices-experiment"
+MLFLOW_EXPERIMENT_NAME = "housing-prices-experiment"
+MLFLOW_MODEL_NAME = "housing-prices-regressor"
 
 
 @task
@@ -121,16 +123,12 @@ def train_best_model(
         valid = xgb.DMatrix(X_val, label=y_val)
 
         best_params = {
-            # <0,3
-            "learning_rate": 0.24672699526038375,
-            # <60
-            "max_depth": 21,
-            # <0,6
-            "min_child_weight": 0.4633648424343051,
+            "learning_rate": 0.24672699526038375,           # <0,3
+            "max_depth": 21,                                # <60
+            "min_child_weight": 0.4633648424343051,         # <0,6
             "objective": "reg:squarederror",
             "reg_alpha": 0.07214781548729281,
-            # <0,25
-            "reg_lambda": 0.08286020895000905,
+            "reg_lambda": 0.08286020895000905,              # <0,25
             "seed": 42,
         }
 
@@ -171,10 +169,141 @@ def train_best_model(
     return None
 
 @task
-def promote_model():
-    
+def register_model():  
     client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
-    print(client.search_experiments())
+    #print(client.search_experiments())
+    exp_name = client.get_experiment_by_name(MLFLOW_EXPERIMENT_NAME)
+    if not exp_name:
+        client.create_experiment(name=MLFLOW_EXPERIMENT_NAME)
+    
+    run = client.search_runs(
+        experiment_ids='1',
+        filter_string="",
+        run_view_type=ViewType.ACTIVE_ONLY,
+        max_results=1,
+    )
+    run_id = run[0].info.run_id
+    #print(run_id)
+    model_uri = f"runs:/{run_id}/model"
+
+    registered_models = mlflow.search_registered_models()
+
+    if not registered_models:
+        print("register model")
+        mlflow.register_model(model_uri=model_uri, name=MLFLOW_MODEL_NAME)
+    else:
+        try:
+            for model in registered_models:
+                if model.name == MLFLOW_MODEL_NAME:
+                    lv = model.latest_versions
+                    for model_version in lv:
+                        if model_version.run_id == run_id:
+                            print("model is already versioned")
+                            raise StopIteration()
+                    print("register model")
+                    mlflow.register_model(model_uri=model_uri, name=MLFLOW_MODEL_NAME)
+        except StopIteration:
+            pass
+
+@task
+def promote_model():
+    client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+    latest_versions = client.get_latest_versions(name=MLFLOW_MODEL_NAME)
+
+    # get the registered run with the best rsme
+    #client.get_model_version()
+    registered_models = client.search_registered_models()
+    best_run_id = ""
+    best_rsme = 100000
+    best_stage = ""
+
+    for m in registered_models:
+        #print (m)
+        lv = m.latest_versions
+        #print (m.latest_versions)
+        for version in lv:
+            if version.current_stage == "Production":
+                best_run_id = version.run_id
+                run = client.get_run(version.run_id)
+                best_rsme = int(run.data.metrics['rmse'])
+                best_stage = "Production"
+                break
+            elif version.current_stage == "Staging":
+                if ((best_stage == "") | (best_stage == "None")):
+                    best_run_id = version.run_id
+                    run = client.get_run(version.run_id)
+                    best_rsme = int(run.data.metrics['rmse'])
+                    best_stage = "Staging"
+                else:
+                    tmp_run_id = version.run_id
+                    run = client.get_run(version.run_id)
+                    tmp_rsme = int(run.data.metrics['rmse'])
+                    if tmp_rsme < best_rsme:
+                        best_rsme = tmp_rsme
+                        best_stage = "Staging"
+                        best_run_id = tmp_run_id
+            elif version.current_stage == "None":
+                if best_stage == "":
+                    best_run_id = version.run_id
+                    run = client.get_run(version.run_id)
+                    best_rsme = int(run.data.metrics['rmse'])
+                    best_stage = "None"
+                else:
+                    tmp_run_id = version.run_id
+                    run = client.get_run(version.run_id)
+                    tmp_rsme = int(run.data.metrics['rmse'])
+                    if tmp_rsme < best_rsme:
+                        best_rsme = tmp_rsme
+                        best_stage = "None"
+                        best_run_id = tmp_run_id
+
+
+            print(f"version: {version.version}, stage: {version.current_stage}")
+    print(f"best run id: {best_run_id}")
+    print(f"best rsme: {best_rsme}")
+    print(f"best stage: {best_stage}")
+
+    #for version in latest_versions:
+    #    print(f"version: {version.version}, stage: {version.current_stage}")
+
+    if latest_versions:
+
+        for version in latest_versions:
+            run = client.get_run(version.run_id)
+            rsme = int(run.data.metrics['rmse'])
+            date = datetime.today().date()
+            new_stage = "Staging"
+
+            if ((rsme < best_rsme) & (version.current_stage == "None")):
+                # transition model to next stage
+                client.transition_model_version_stage(
+                    name=MLFLOW_MODEL_NAME,
+                    version=version.version,
+                    stage=new_stage,
+                    archive_existing_versions=False
+                )
+
+                client.update_model_version(
+                    name=MLFLOW_MODEL_NAME,
+                    version=version.version,
+                    description=f"The model version {version.version} was transitioned to {new_stage} on {date}"
+                )
+            elif ((version.run_id == best_run_id)& (version.current_stage == "None")):
+                # transition model to next stage
+                client.transition_model_version_stage(
+                    name=MLFLOW_MODEL_NAME,
+                    version=version.version,
+                    stage=new_stage,
+                    archive_existing_versions=False
+                )
+
+                client.update_model_version(
+                    name=MLFLOW_MODEL_NAME,
+                    version=version.version,
+                    description=f"The model version {version.version} was transitioned to {new_stage} on {date}"
+                )
+            #print(run.data.metrics['rmse'])
+            #print(f"rmse: {.metrics.rmse}")
 
 
 @flow
@@ -184,7 +313,7 @@ def main_flow(
 ) -> None:
     """The main training pipeline"""
 
-    create_datasets()
+    #create_datasets()
 
     """Read data into DataFrame"""
     df_train = pd.read_csv(TRAIN_PATH)
@@ -192,17 +321,20 @@ def main_flow(
 
     # MLflow settings
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment(EXPERIMENT_NAME)
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
-    # Load
-    #df_train = read_data(train_path)
-    #df_val = read_data(val_path)
+        # Load
+        #df_train = read_data(train_path)
+        #df_val = read_data(val_path)
 
     # Transform
     X_train, X_val, y_train, y_val, dv = add_features(df_train, df_val)
 
     # Train
     train_best_model(X_train, X_val, y_train, y_val, dv)
+
+    # register the model
+    register_model()
 
     # promote the model
     promote_model()

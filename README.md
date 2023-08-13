@@ -23,6 +23,7 @@ This model tries to predict the housing prices (column "price") for this data se
 - run **make prerequisites** to initialize the project
     * provide virtual environment .venv in project folder
     * unzips the archive.zip to ./data/raw/housing-prices-35.csv
+    * the step "Installing dependencies from Pipfile.lock" needs some time
 
 - open seperate terminal and run **make start_mlflow**
     * starts MLflow server
