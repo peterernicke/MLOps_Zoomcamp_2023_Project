@@ -20,28 +20,18 @@ This model tries to predict the housing prices (column "price") for this data se
 - the data (housing-prices-35.csv) cannot be provided by this repo, because it exceeds the maximum file size to upload it to this repository --> but there is an archive.zip that contains the csv file --> it's automatically unzipped while running make prerequisites
 
 ## Reproducibility
-- ```python
-make prerequisites
-```
+- run **make prerequisites** to initialize the project
     * provide virtual environment .venv in project folder
     * unzips the archive.zip to ./data/raw/housing-prices-35.csv
 
-- open seperate terminal and ```python
-make start_mlflow
-```
+- open seperate terminal and run **make start_mlflow**
     * starts MLflow server
 
-- open seperate terminal and ```python
-make start_prefect
-```
+- open seperate terminal and run **make start_prefect**
     * starts Prefect server
 
-- open seperate terminal and ```python
-make start_train
-```
+- open seperate terminal and run **make start_train**
     * starts the workflow
 
-- ```python
-make clean
-```
+- run **make clean** to clean the project environment
     * removes the folder of the virtual environment 
