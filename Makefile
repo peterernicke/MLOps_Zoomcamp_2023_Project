@@ -5,6 +5,7 @@ requirements:
 	python3 -m pip install --upgrade pip
 	pip install --upgrade pipenv
 	pipenv install --python 3.11
+	pipenv run python ./scripts/unzipZipRaw.py
 
 start_env:
 	pipenv shell
