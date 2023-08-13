@@ -1,7 +1,7 @@
 export PIPENV_VENV_IN_PROJECT := 1
 export PIPENV_VERBOSITY := -1
 
-requirements:
+prerequisites:
 	python3 -m pip install --upgrade pip
 	pip install --upgrade pipenv
 	pipenv install --python 3.11
@@ -20,7 +20,7 @@ start_prefect:
 start_mlflow:
 	pipenv run mlflow ui --backend-store-uri sqlite:///mlflow.db
 
-start_train:
+start_train: ./data/raw/housing-prices-35.csv
 	pipenv run python orchestrate.py
 
 clean:
