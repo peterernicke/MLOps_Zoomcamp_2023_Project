@@ -4,7 +4,7 @@ import pathlib
 
 from mlflow.tracking import MlflowClient
 from mlflow.entities import ViewType
-from datetime import datetime
+from datetime import date, datetime
 
 import numpy as np
 import scipy
@@ -15,6 +15,7 @@ import sklearn
 import xgboost as xgb
 
 from prefect import flow, task
+from prefect.artifacts import create_markdown_artifact
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 from sklearn.feature_extraction import DictVectorizer
@@ -146,14 +147,6 @@ def train_best_model(
         y_pred = booster.predict(valid)
         rmse = mean_squared_error(y_val, y_pred, squared=False)
         mlflow.log_metric("rmse", rmse)
-        #prec = precision_score(y_val, y_pred)
-        #mlflow.log_metric("precision", prec)
-        #recall = recall_score(y_val, y_pred)
-        #mlflow.log_metric("recall", recall)
-        #f1 = f1_score(y_val, y_pred)
-        #mlflow.log_metric("f1", f1)
-        #acc = accuracy_score(y_val, y_pred)
-        #mlflow.log_metric("accuracy", acc)
         r2 = r2_score(y_val, y_pred)
         mlflow.log_metric("r2score", r2)
 
@@ -163,6 +156,24 @@ def train_best_model(
         mlflow.log_artifact("models/preprocessor.b", artifact_path="preprocessor")
 
         mlflow.xgboost.log_model(booster, artifact_path="models_mlflow")
+
+        markdown__rmse_report = f"""# RMSE Report
+
+        ## Summary
+
+        Housing Prices France Prediction
+
+        ## RMSE XGBoost Model
+
+        | Region    | RMSE |
+        |:----------|-------:|
+        | {date.today()} | {rmse:.2f} |
+        """
+
+        create_markdown_artifact(
+            key="housing-prices-report", markdown=markdown__rmse_report
+        )
+
     return None
 
 @task

@@ -1,0 +1,8 @@
+__pycache__/*
+data/processed/*
+data/raw/housing-prices-35.csv
+mlruns/*
+models/preprocessor.b
+scripts/__pycache__/*
+tests/__pycache__/*
+mlflow.db
