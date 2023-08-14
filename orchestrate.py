@@ -13,22 +13,16 @@ import pandas as pd
 import seaborn as sns
 import sklearn
 import xgboost as xgb
-import matplotlib.pyplot as plt
-# conda install -c conda-forge prefect
-# prefect server start
+
 from prefect import flow, task
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 from sklearn.feature_extraction import DictVectorizer
 
 CSV_FILE = "./data/raw/housing-prices-35.csv"
 # print(CSV_FILE)
 
+DATA_PATH = "./data/processed/"
 TRAIN_PATH = "./data/processed/train.csv"
 VAL_PATH = "./data/processed/val.csv"
 TEST_PATH = "./data/processed/test.csv"
@@ -64,6 +58,9 @@ def create_datasets(csv_file: str = CSV_FILE):
     val = df.iloc[num_train + 1 : num_train + 1 + num_val]
 
     test = df.iloc[num_train + 1 + num_val + 1 :]
+
+    if not os.path.exists(DATA_PATH):
+        os.makedirs(DATA_PATH)        
 
     if not os.path.isfile(TRAIN_PATH):
         train.to_csv(path_or_buf=TRAIN_PATH)
@@ -307,15 +304,13 @@ def promote_model():
 
 
 @flow
-def main_flow(
-    # train_path: str = "./data/green_tripdata_2021-01.parquet",
-    # val_path: str = "./data/green_tripdata_2021-02.parquet",
-) -> None:
+def main_flow() -> None:
     """The main training pipeline"""
 
-    #create_datasets()
+    # Create train, val, test datasets
+    create_datasets()
 
-    """Read data into DataFrame"""
+    # Read data into DataFrame
     df_train = pd.read_csv(TRAIN_PATH)
     df_val = pd.read_csv(VAL_PATH)
 
@@ -323,20 +318,16 @@ def main_flow(
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
-        # Load
-        #df_train = read_data(train_path)
-        #df_val = read_data(val_path)
-
     # Transform
     X_train, X_val, y_train, y_val, dv = add_features(df_train, df_val)
 
     # Train
     train_best_model(X_train, X_val, y_train, y_val, dv)
 
-    # register the model
+    # Register the model
     register_model()
 
-    # promote the model
+    # Promote the model
     promote_model()
 
 
