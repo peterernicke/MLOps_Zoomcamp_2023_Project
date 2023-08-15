@@ -39,9 +39,11 @@ For the deployment of the flow i've adapted **prefect.yaml** file.
 
 **Fourth step** Create work pool, deploy the flow and run the worker
 - open new terminal
+- **prefect work-pool delete 'zoompool'** (uncomment, if there is already a pool with this name)
 - **prefect work-pool create --type process zoompool**
-- **prefect deploy --all --interval 3600**
+- **prefect --no-prompt deploy --all**
 - **prefect worker start -p zoompool**
+- go to prefect website (http://127.0.0.1:4200/deployments) --> "Quick run"
 
 ## Reproducibility
 - run **make prerequisites** to initialize the project
@@ -56,8 +58,11 @@ For the deployment of the flow i've adapted **prefect.yaml** file.
 - open seperate terminal and run **make start_prefect**
     * starts Prefect server
 
+- open seperate terminal and run **make start_deploy**
+    * starts the workflow deployment with Prefect
+
 - open seperate terminal and run **make start_train**
     * starts the workflow
 
 - run **make clean** to clean the project environment
-    * removes the folder of the virtual environment
+    * removes the folder of the virtual environment and cleans the project folder

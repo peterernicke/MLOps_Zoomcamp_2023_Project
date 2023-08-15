@@ -6,3 +6,4 @@ models/preprocessor.b
 scripts/__pycache__/*
 tests/__pycache__/*
 mlflow.db
+05-monitoring/

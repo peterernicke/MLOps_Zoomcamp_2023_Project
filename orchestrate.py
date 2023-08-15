@@ -1,9 +1,20 @@
+import requests
+
+from evidently import ColumnMapping
+from evidently.report import Report
+from evidently.metrics import ColumnDriftMetric, DatasetDriftMetric, DatasetMissingValuesMetric
+
+from joblib import load, dump
+from tqdm import tqdm
+
 import pickle
 import os.path
 import pathlib
 
+from mlflow.data.pandas_dataset import PandasDataset
 from mlflow.tracking import MlflowClient
 from mlflow.entities import ViewType
+from mlflow.exceptions import MlflowException
 from datetime import date, datetime
 
 import numpy as np
@@ -16,21 +27,85 @@ import xgboost as xgb
 
 from prefect import flow, task
 from prefect.artifacts import create_markdown_artifact
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, mean_absolute_percentage_error
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 from sklearn.feature_extraction import DictVectorizer
 
 CSV_FILE = "./data/raw/housing-prices-35.csv"
-# print(CSV_FILE)
 
-DATA_PATH = "./data/processed/"
-TRAIN_PATH = "./data/processed/train.csv"
-VAL_PATH = "./data/processed/val.csv"
-TEST_PATH = "./data/processed/test.csv"
+EVIDENTLY_REPORT_PATH = "./evidently/"
+DATA_PATH           = "./data/processed/"
+TRAIN_PATH          = f"{DATA_PATH}train.csv"
+VAL_PATH            = f"{DATA_PATH}val.csv"
+TEST_PATH           = f"{DATA_PATH}test.csv"
+PROBLEM_TRAIN_PATH  = f"{DATA_PATH}p_train.csv"
+PROBLEM_VAL_PATH    = f"{DATA_PATH}p_val.csv"
+PROBLEM_TEST_PATH   = f"{DATA_PATH}p_test.csv"
+FULL_TRAIN_PATH     = f"{DATA_PATH}full_train.csv"
+FULL_VAL_PATH       = f"{DATA_PATH}full_val.csv"
+FULL_TEST_PATH      = f"{DATA_PATH}full_test.csv"
 
 MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
 MLFLOW_EXPERIMENT_NAME = "housing-prices-experiment"
 MLFLOW_MODEL_NAME = "housing-prices-regressor"
+
+CATEGORICAL = []#['x_lbt93', 'y_lbt93']
+NUMERICAL = ["area_living", "area_land", "n_rooms", "price", "year"]
+FEATURES = CATEGORICAL + NUMERICAL
+
+BEST_PARAMS = {
+            "learning_rate": 0.24672699526038375,           # <0,3
+            "max_depth": 21,                                # <60
+            "min_child_weight": 0.4633648424343051,         # <0,6
+            "objective": "reg:squarederror",
+            "reg_alpha": 0.07214781548729281,
+            "reg_lambda": 0.08286020895000905,              # <0,25
+            "seed": 42,
+            }
+
+@task
+def setup():
+    # Create data folder and evidently report folder
+    if not os.path.exists(DATA_PATH):
+        os.makedirs(DATA_PATH)
+
+    if not os.path.exists(EVIDENTLY_REPORT_PATH):
+        os.makedirs(EVIDENTLY_REPORT_PATH)
+
+@task
+def create_processed_dataset(
+    source_csv_file: str = CSV_FILE,
+    category: str = "",                 # H-houses, C-Condo, A-All
+    train_path: str = "",
+    val_path: str = "",
+    test_path: str = "",
+):
+    df = pd.read_csv(source_csv_file)
+    if category == "C":
+        df.drop(df.loc[df["category"] == "H"].index, inplace=True)
+    elif category == "H":
+        df.drop(df.loc[df["category"] == "C"].index, inplace=True)
+    
+    df = df.drop_duplicates()
+    df["year"] = df["date"]
+    df.year = df.year.apply(lambda td: td[:4])
+
+    num_train = int((df.date.count()) * 0.7)
+    train = df.iloc[:num_train]
+
+    num_val = int((df.date.count()) * 0.2)
+    val = df.iloc[num_train + 1 : num_train + 1 + num_val]
+
+    test = df.iloc[num_train + 1 + num_val + 1 :]       
+
+    if not os.path.isfile(train_path):
+        train.to_csv(path_or_buf=train_path)
+
+    if not os.path.isfile(val_path):
+        val.to_csv(path_or_buf=val_path)
+
+    if not os.path.isfile(test_path):
+        test.to_csv(path_or_buf=test_path)
 
 
 @task
@@ -86,12 +161,12 @@ def add_features(
     ]
 ):
     # categorical = ['x_lbt93', 'y_lbt93']
-    numerical = ["area_living", "area_land", "n_rooms", "price", "year"]
+    # numerical = ["area_living", "area_land", "n_rooms", "price", "year"]
     # features = categorical + numerical
-    features = numerical
+    features = FEATURES
 
-    # df_train[categorical] = df_train[categorical].astype(str)
-    # df_val[categorical] = df_val[categorical].astype(str)
+    # df_train[CATEGORICAL] = df_train[CATEGORICAL].astype(str)
+    # df_val[CATEGORICAL] = df_val[CATEGORICAL].astype(str)
 
     dv = DictVectorizer()
 
@@ -115,23 +190,19 @@ def train_best_model(
     dv: sklearn.feature_extraction.DictVectorizer,
 ) -> None:
     """train a model with best hyperparams and write everything out"""
+    df = pd.read_csv(TRAIN_PATH)
+    dataset: PandasDataset = mlflow.data.from_pandas(df, source=TRAIN_PATH)
 
     with mlflow.start_run():
         train = xgb.DMatrix(X_train, label=y_train)
         valid = xgb.DMatrix(X_val, label=y_val)
 
-        best_params = {
-            "learning_rate": 0.24672699526038375,           # <0,3
-            "max_depth": 21,                                # <60
-            "min_child_weight": 0.4633648424343051,         # <0,6
-            "objective": "reg:squarederror",
-            "reg_alpha": 0.07214781548729281,
-            "reg_lambda": 0.08286020895000905,              # <0,25
-            "seed": 42,
-        }
+        best_params = BEST_PARAMS
 
         mlflow.set_tag("model", "xgboost")
-
+        # Experimental: This function may change or be removed in a future release without warning.
+        mlflow.log_input(dataset, context="training")
+        
         mlflow.log_param("train-data-path", TRAIN_PATH)
         mlflow.log_param("valid-data-path", VAL_PATH)
         mlflow.log_params(best_params)
@@ -139,9 +210,11 @@ def train_best_model(
         booster = xgb.train(
             params=best_params,
             dtrain=train,
-            num_boost_round=100,
+            #num_boost_round=100,
+            num_boost_round=10,
             evals=[(valid, "validation")],
-            early_stopping_rounds=20,
+            #early_stopping_rounds=20,
+            early_stopping_rounds=10,
         )
 
         y_pred = booster.predict(valid)
@@ -149,6 +222,8 @@ def train_best_model(
         mlflow.log_metric("rmse", rmse)
         r2 = r2_score(y_val, y_pred)
         mlflow.log_metric("r2score", r2)
+
+        monitor_model(pd.read_csv(TRAIN_PATH), pd.read_csv(VAL_PATH), booster, train, valid)
 
         pathlib.Path("models").mkdir(exist_ok=True)
         with open("models/preprocessor.b", "wb") as f_out:
@@ -165,7 +240,7 @@ def train_best_model(
 
         ## RMSE XGBoost Model
 
-        | Region    | RMSE |
+        |   Date    |  RMSE  |
         |:----------|-------:|
         | {date.today()} | {rmse:.2f} |
         """
@@ -177,14 +252,14 @@ def train_best_model(
     return None
 
 @task
-def register_model():  
-    client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+def register_model(mlflow_client):  
+    #client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
     #print(client.search_experiments())
-    exp_name = client.get_experiment_by_name(MLFLOW_EXPERIMENT_NAME)
-    if not exp_name:
-        client.create_experiment(name=MLFLOW_EXPERIMENT_NAME)
+    #exp_name = client.get_experiment_by_name(MLFLOW_EXPERIMENT_NAME)
+    #if not exp_name:
+    #    client.create_experiment(name=MLFLOW_EXPERIMENT_NAME)
     
-    run = client.search_runs(
+    run = mlflow_client.search_runs(
         experiment_ids='1',
         filter_string="",
         run_view_type=ViewType.ACTIVE_ONLY,
@@ -213,18 +288,69 @@ def register_model():
         except StopIteration:
             pass
 
-@task
-def promote_model():
-    client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
-    latest_versions = client.get_latest_versions(name=MLFLOW_MODEL_NAME)
+def get_best_run(mlflow_client):
+    #latest_versions = mlflow_client.get_latest_versions(name=MLFLOW_MODEL_NAME)
 
     # get the registered run with the best rsme
-    #client.get_model_version()
-    registered_models = client.search_registered_models()
+    registered_models = mlflow_client.search_registered_models()
     best_run_id = ""
     best_rsme = 100000
     best_stage = ""
 
+    for m in registered_models:
+        lv = m.latest_versions
+        
+        for version in lv:
+            if version.current_stage == "Production":
+                best_run_id = version.run_id
+                run = mlflow_client.get_run(version.run_id)
+                best_rsme = int(run.data.metrics['rmse'])
+                best_stage = "Production"
+                break
+            elif version.current_stage == "Staging":
+                if ((best_stage == "") | (best_stage == "None")):
+                    best_run_id = version.run_id
+                    run = mlflow_client.get_run(version.run_id)
+                    best_rsme = int(run.data.metrics['rmse'])
+                    best_stage = "Staging"
+                else:
+                    tmp_run_id = version.run_id
+                    run = mlflow_client.get_run(version.run_id)
+                    tmp_rsme = int(run.data.metrics['rmse'])
+                    if tmp_rsme < best_rsme:
+                        best_rsme = tmp_rsme
+                        best_stage = "Staging"
+                        best_run_id = tmp_run_id
+            elif version.current_stage == "None":
+                if best_stage == "":
+                    best_run_id = version.run_id
+                    run = mlflow_client.get_run(version.run_id)
+                    best_rsme = int(run.data.metrics['rmse'])
+                    best_stage = "None"
+                else:
+                    tmp_run_id = version.run_id
+                    run = mlflow_client.get_run(version.run_id)
+                    tmp_rsme = int(run.data.metrics['rmse'])
+                    if tmp_rsme < best_rsme:
+                        best_rsme = tmp_rsme
+                        best_stage = "None"
+                        best_run_id = tmp_run_id
+
+    return best_run_id, best_rsme, best_stage
+
+@task
+def promote_model(mlflow_client):
+    #client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+    latest_versions = mlflow_client.get_latest_versions(name=MLFLOW_MODEL_NAME)
+
+    # get the registered run with the best rsme
+    #client.get_model_version()
+    #registered_models = mlflow_client.search_registered_models()
+    #best_run_id = ""
+    #best_rsme = 100000
+    #best_stage = ""
+
+    '''
     for m in registered_models:
         #print (m)
         lv = m.latest_versions
@@ -270,6 +396,8 @@ def promote_model():
     print(f"best run id: {best_run_id}")
     print(f"best rsme: {best_rsme}")
     print(f"best stage: {best_stage}")
+    '''
+    best_run_id, best_rsme, best_stage = get_best_run(mlflow_client)
 
     #for version in latest_versions:
     #    print(f"version: {version.version}, stage: {version.current_stage}")
@@ -277,57 +405,115 @@ def promote_model():
     if latest_versions:
 
         for version in latest_versions:
-            run = client.get_run(version.run_id)
+            run = mlflow_client.get_run(version.run_id)
             rsme = int(run.data.metrics['rmse'])
-            date = datetime.today().date()
+            transition_date = datetime.today().date()
             new_stage = "Staging"
 
             if ((rsme < best_rsme) & (version.current_stage == "None")):
                 # transition model to next stage
-                client.transition_model_version_stage(
+                mlflow_client.transition_model_version_stage(
                     name=MLFLOW_MODEL_NAME,
                     version=version.version,
                     stage=new_stage,
                     archive_existing_versions=False
                 )
 
-                client.update_model_version(
+                mlflow_client.update_model_version(
                     name=MLFLOW_MODEL_NAME,
                     version=version.version,
-                    description=f"The model version {version.version} was transitioned to {new_stage} on {date}"
+                    description=f"The model version {version.version} was transitioned to {new_stage} on {transition_date}"
                 )
             elif ((version.run_id == best_run_id)& (version.current_stage == "None")):
                 # transition model to next stage
-                client.transition_model_version_stage(
+                mlflow_client.transition_model_version_stage(
                     name=MLFLOW_MODEL_NAME,
                     version=version.version,
                     stage=new_stage,
                     archive_existing_versions=False
                 )
 
-                client.update_model_version(
+                mlflow_client.update_model_version(
                     name=MLFLOW_MODEL_NAME,
                     version=version.version,
-                    description=f"The model version {version.version} was transitioned to {new_stage} on {date}"
+                    description=f"The model version {version.version} was transitioned to {new_stage} on {transition_date}"
                 )
             #print(run.data.metrics['rmse'])
             #print(f"rmse: {.metrics.rmse}")
 
 
-@flow
+def monitor_model(train_data, val_data, model, train, valid):
+    today = datetime.now()
+    today = f"{today.year}-{today.month:02d}-{today.day:02d}-{today.hour:02d}:{today.minute:02d}"
+    report_name = f"EvidentlyReport-{today}.html"
+    report_path = f"{EVIDENTLY_REPORT_PATH}{report_name}"
+
+    train_preds = model.predict(train)
+    train_data['prediction'] = train_preds
+
+    val_preds = model.predict(valid)
+    val_data['prediction'] = val_preds
+
+    column_mapping = ColumnMapping(
+        target=None,
+        prediction='prediction',
+        numerical_features=NUMERICAL,
+        categorical_features=CATEGORICAL
+    )
+
+    report = Report(metrics=[
+        ColumnDriftMetric(column_name='price'),
+        DatasetDriftMetric(),
+        DatasetMissingValuesMetric()
+    ]
+    )
+
+    report.run(reference_data=train_data, current_data=val_data, column_mapping=column_mapping)
+    report.save_html(report_path)
+
+    result = report.as_dict()
+
+    #price drift
+    print(f"Price drift: {result['metrics'][0]['result']['drift_score']}")
+
+    #number of drifted columns
+    print(f"number of drifted columns: {result['metrics'][1]['result']['number_of_drifted_columns']}")
+
+    #share of missing values
+    print(f"share of missing values: {result['metrics'][2]['result']['current']['share_of_missing_values']}")
+
+
+@flow(log_prints=True)
 def main_flow() -> None:
     """The main training pipeline"""
+    # Preparation steps
+    setup()
+    
+    # MLflow settings
+    mlflow_client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+    try:
+        mlflow.get_experiment_by_name(MLFLOW_EXPERIMENT_NAME)
+    except MlflowException:
+        mlflow.create_experiment(name=MLFLOW_EXPERIMENT_NAME)
+
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+
+    # Print info about the best run
+    best_run_id, best_rsme, best_stage = get_best_run(mlflow_client)
+    print(f"best run id: {best_run_id}")
+    print(f"best rsme: {best_rsme}")
+    print(f"stage: {best_stage}")
 
     # Create train, val, test datasets
-    create_datasets()
+    create_processed_dataset(category="A", train_path=FULL_TRAIN_PATH, val_path=FULL_VAL_PATH, test_path=FULL_TEST_PATH)
+    create_processed_dataset(category="H", train_path=TRAIN_PATH, val_path=VAL_PATH, test_path=TEST_PATH)
+    create_processed_dataset(category="C", train_path=PROBLEM_TRAIN_PATH, val_path=PROBLEM_VAL_PATH, test_path=PROBLEM_TEST_PATH)
 
     # Read data into DataFrame
     df_train = pd.read_csv(TRAIN_PATH)
     df_val = pd.read_csv(VAL_PATH)
-
-    # MLflow settings
-    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
     # Transform
     X_train, X_val, y_train, y_val, dv = add_features(df_train, df_val)
@@ -336,10 +522,13 @@ def main_flow() -> None:
     train_best_model(X_train, X_val, y_train, y_val, dv)
 
     # Register the model
-    register_model()
+    register_model(mlflow_client)
 
     # Promote the model
-    promote_model()
+    promote_model(mlflow_client)
+
+    # Monitor the model
+    #monitor_model()
 
 
 if __name__ == "__main__":
