@@ -108,6 +108,7 @@ def create_processed_dataset(
     if not os.path.isfile(test_path):
         test.to_csv(path_or_buf=test_path)
 
+'''
 @task
 def create_datasets(csv_file: str = CSV_FILE):
     df = pd.read_csv(csv_file)
@@ -146,6 +147,7 @@ def create_datasets(csv_file: str = CSV_FILE):
 
     if not os.path.isfile(TEST_PATH):
         test.to_csv(path_or_buf=TEST_PATH)
+'''
 
 @task(retries=3, retry_delay_seconds=2)
 def add_features(

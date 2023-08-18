@@ -7,3 +7,4 @@ scripts/__pycache__/*
 tests/__pycache__/*
 mlflow.db
 05-monitoring/
+04-deployment/

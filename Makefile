@@ -20,11 +20,11 @@ start_mlflow:
 start_prefect:
 	pipenv run prefect server start
 
-start_deploy:
+start_deploy: ./data/raw/housing-prices-35.csv
 	# if error: Work pool named 'zoompool' already exists. 
 	# Please try creating your work pool again with a different name.
 	# uncomment next line
-	pipenv run prefect work-pool delete 'zoompool'
+	#pipenv run prefect work-pool delete 'zoompool'
 	pipenv run prefect work-pool create --type process zoompool
 	pipenv run prefect --no-prompt deploy --all
 	pipenv run prefect worker start -p zoompool
@@ -49,3 +49,9 @@ clean:
 	rm -rf mlruns
 	rm -rf mlflow.db
 	pipenv --rm
+
+web-service:
+# cd web-service
+# docker build -t housing-price-prediction-service:v1 .
+# docker run -it --rm -p 9696:9696 housing-price-prediction-service:v1
+# python test.py
