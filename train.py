@@ -1,22 +1,22 @@
-import variables as v
-import monitor
-import mlflow
 import pickle
 import pathlib
+from datetime import date, datetime
+
+import mlflow
 import pandas as pd
 import xgboost as xgb
 from prefect import flow, task
 from mlflow.entities import ViewType
-from datetime import date, datetime
 from mlflow.tracking import MlflowClient
-from prefect.artifacts import create_markdown_artifact
+from sklearn.metrics import r2_score, mean_squared_error
 from mlflow.exceptions import MlflowException
+from prefect.artifacts import create_markdown_artifact
 from mlflow.data.pandas_dataset import PandasDataset
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.metrics import (
-    r2_score,
-    mean_squared_error
-)
+
+import monitor
+import variables as v
+
 
 @flow(name='training_best_run_flow', log_prints=True)
 def get_best_run(mlflow_client):
@@ -69,12 +69,13 @@ def get_best_run(mlflow_client):
 
     return best_run_id, best_rsme, best_stage
 
+
 @task(name='training_task_preparation')
 def prep_for_train(train_path, val_path, features, target):
     df_train = pd.read_csv(train_path)
     df_val = pd.read_csv(val_path)
 
-    #features = FEATURES
+    # features = FEATURES
     # df_train[CATEGORICAL] = df_train[CATEGORICAL].astype(str)
     # df_val[CATEGORICAL] = df_val[CATEGORICAL].astype(str)
 
@@ -94,9 +95,21 @@ def prep_for_train(train_path, val_path, features, target):
 
     return dv, train_path, train, val_path, valid, y_val
 
+
 @flow(name='training_flow_train')
-#def train_model(params, dv, train_path, train, val_path, valid, y_val, model_num_boost_round=10, model_early_stopping_rounds=10):
-def train_model(mlflow_client, params, dv, train_path, train, val_path, valid, y_val, model_num_boost_round=10, model_early_stopping_rounds=10):
+# def train_model(params, dv, train_path, train, val_path, valid, y_val, model_num_boost_round=10, model_early_stopping_rounds=10):
+def train_model(
+    mlflow_client,
+    params,
+    dv,
+    train_path,
+    train,
+    val_path,
+    valid,
+    y_val,
+    model_num_boost_round=10,
+    model_early_stopping_rounds=10,
+):
     report_type = "Train"
     df = pd.read_csv(train_path)
     dataset: PandasDataset = mlflow.data.from_pandas(df, source=train_path)
@@ -104,7 +117,6 @@ def train_model(mlflow_client, params, dv, train_path, train, val_path, valid, y
         params = v.BEST_PARAMS
 
     with mlflow.start_run():
-        
         mlflow.set_tag("model", "xgboost")
         # Experimental: This function may change or be removed in a future release without warning.
         mlflow.log_input(dataset, context="training")
@@ -172,12 +184,12 @@ def train_model(mlflow_client, params, dv, train_path, train, val_path, valid, y
         )
 
         return report_type, run_id, dv, train, valid
-       
+
 
 @flow(name='training_flow', log_prints=True)
 def training_flow() -> None:
     """The main training pipeline"""
-    
+
     # MLflow settings
     mlflow_client = MlflowClient(tracking_uri=v.MLFLOW_TRACKING_URI)
     mlflow.set_tracking_uri(v.MLFLOW_TRACKING_URI)
@@ -199,9 +211,13 @@ def training_flow() -> None:
         "seed": 42,
     }
 
-    dv, train_path, train, val_path, valid, y_val = prep_for_train(v.TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE)
+    dv, train_path, train, val_path, valid, y_val = prep_for_train(
+        v.TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE
+    )
 
-    train_model(mlflow_client, params, dv, train_path, train, val_path, valid, y_val, 10, 10)
+    train_model(
+        mlflow_client, params, dv, train_path, train, val_path, valid, y_val, 10, 10
+    )
 
 
 if __name__ == "__main__":

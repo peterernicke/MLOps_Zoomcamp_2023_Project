@@ -1,7 +1,7 @@
-import variables as v
+from datetime import date, datetime
+
 import mlflow
 from prefect import flow
-from datetime import date, datetime
 from evidently import ColumnMapping
 from evidently.report import Report
 from evidently.metrics import (
@@ -10,8 +10,11 @@ from evidently.metrics import (
     DatasetMissingValuesMetric
 )
 
+import variables as v
+
+
 @flow(name='monitoring_flow', log_prints=True)
-#def monitor_model(report_type, train_data, val_data, model, dv, train, valid):
+# def monitor_model(report_type, train_data, val_data, model, dv, train, valid):
 def monitor_model(report_type, train_data, val_data, run_id, dv, train, valid):
     today = datetime.now()
     today = f"{today.year}-{today.month:02d}-{today.day:02d}-{today.hour:02d}:{today.minute:02d}"
@@ -63,5 +66,6 @@ def monitor_model(report_type, train_data, val_data, run_id, dv, train, valid):
         f"share of missing values: {result['metrics'][2]['result']['current']['share_of_missing_values']}"
     )
 
+
 if __name__ == "__main__":
-    monitor_model(None, None ,None, None, None, None, None)
+    monitor_model(None, None, None, None, None, None, None)

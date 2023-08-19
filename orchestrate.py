@@ -1,9 +1,3 @@
-import train as training
-import predict as prediction
-import promote
-import monitor
-import register
-import variables as v
 import pickle
 import random
 import os.path
@@ -41,6 +35,13 @@ from prefect.artifacts import create_markdown_artifact
 from sklearn.linear_model import Lasso, Ridge, LinearRegression
 from mlflow.data.pandas_dataset import PandasDataset
 from sklearn.feature_extraction import DictVectorizer
+
+import train as training
+import monitor
+import predict as prediction
+import promote
+import register
+import variables as v
 
 CSV_FILE = "./data/raw/housing-prices-35.csv"
 
@@ -512,7 +513,7 @@ def predict(mlflow_client, dataframe):
     return result[0]
 
 
-@flow(name='orchestrate_flow',log_prints=True)
+@flow(name='orchestrate_flow', log_prints=True)
 def main_flow() -> None:
     """The main training pipeline"""
     # Preparation steps
@@ -554,40 +555,44 @@ def main_flow() -> None:
         )
 
     # Read data into DataFrame
-    #df_train = pd.read_csv(TRAIN_PATH)
-    #df_val = pd.read_csv(VAL_PATH)
+    # df_train = pd.read_csv(TRAIN_PATH)
+    # df_val = pd.read_csv(VAL_PATH)
 
     # Transform
-    #X_train, X_val, y_train, y_val, dv = add_features(df_train, df_val)
+    # X_train, X_val, y_train, y_val, dv = add_features(df_train, df_val)
 
     # Train
-    #train_best_model(X_train, X_val, y_train, y_val, dv)
+    # train_best_model(X_train, X_val, y_train, y_val, dv)
 
     # Register the model
-    #register_model(mlflow_client)
+    # register_model(mlflow_client)
 
     # Promote the model
-    #promote_model(mlflow_client)
+    # promote_model(mlflow_client)
 
     # Test the model
-    #test_model(mlflow_client, TEST_PATH)
+    # test_model(mlflow_client, TEST_PATH)
 
     # Predict
     # PROBLEM_TEST set has 3966 rows
-    #df_pred = pd.read_csv(PROBLEM_TEST_PATH)
-    #random_value = random.randint(0, 3965)
-    #dataframe = df_pred.iloc[[random_value]]
-    #result = predict(mlflow_client, dataframe)
+    # df_pred = pd.read_csv(PROBLEM_TEST_PATH)
+    # random_value = random.randint(0, 3965)
+    # dataframe = df_pred.iloc[[random_value]]
+    # result = predict(mlflow_client, dataframe)
     # print(dataframe[FEATURES])
-    #print(f"Predicted house price: {result}")
+    # print(f"Predicted house price: {result}")
 
     # Read data into DataFrame, transform data and provide vars for model training
-    dv, train_path, train, val_path, valid, y_val = training.prep_for_train(v.TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE)
+    dv, train_path, train, val_path, valid, y_val = training.prep_for_train(
+        v.TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE
+    )
 
     # Train the model
-    training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val)
-    #report_type, run_id, dv, train, valid = training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val)
-    #monitor.monitor_model(
+    training.train_model(
+        mlflow_client, "", dv, train_path, train, val_path, valid, y_val
+    )
+    # report_type, run_id, dv, train, valid = training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val)
+    # monitor.monitor_model(
     #        report_type,
     #        pd.read_csv(train_path),
     #        pd.read_csv(val_path),
@@ -617,20 +622,21 @@ def main_flow() -> None:
     df_pred = pd.read_csv(v.PROBLEM_TEST_PATH)
     random_value = random.randint(0, 3965)
     dataframe = df_pred.iloc[[random_value]]
-    #result = predict(mlflow_client, dataframe)
+    # result = predict(mlflow_client, dataframe)
     # print(dataframe[FEATURES])
-    #print(f"Predicted house price: {result}")
-    #run_id = ""
+    # print(f"Predicted house price: {result}")
+    # run_id = ""
     result = prediction.predict(mlflow_client, None, dataframe)
-    #result = prediction.predict(mlflow_client, run_id, dataframe)
+    # result = prediction.predict(mlflow_client, run_id, dataframe)
     print(f"Predicted house price: {result}")
 
     # Retrain the model
-    #print("Retrain the model")
-    #dv, train_path, train, val_path, valid, y_val = training.prep_for_train(v.PROBLEM_TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE)
-    #training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val, 12, 12)
+    # print("Retrain the model")
+    # dv, train_path, train, val_path, valid, y_val = training.prep_for_train(v.PROBLEM_TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE)
+    # training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val, 12, 12)
     # Test new model
-    #prediction.test_model(mlflow_client, None, v.TEST_PATH, v.PROBLEM_TRAIN_PATH)
+    # prediction.test_model(mlflow_client, None, v.TEST_PATH, v.PROBLEM_TRAIN_PATH)
+
 
 if __name__ == "__main__":
     main_flow()

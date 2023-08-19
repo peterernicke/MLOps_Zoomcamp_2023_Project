@@ -1,8 +1,10 @@
-import variables as v
 import mlflow
 from prefect import flow, task
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
+
+import variables as v
+
 
 @flow(name='register_model_flow', log_prints=True)
 def register_model(mlflow_client):
@@ -35,6 +37,7 @@ def register_model(mlflow_client):
                     mlflow.register_model(model_uri=model_uri, name=v.MLFLOW_MODEL_NAME)
         except StopIteration:
             pass
+
 
 if __name__ == "__main__":
     register_model(MlflowClient(tracking_uri=v.MLFLOW_TRACKING_URI))
