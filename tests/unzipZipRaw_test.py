@@ -1,6 +1,6 @@
 import os.path
 
-import scripts.unzipZipRaw
+from . import scripts.unzipZipRaw
 
 CVS_FILE = './data/raw/housing-prices-35.csv'
 
