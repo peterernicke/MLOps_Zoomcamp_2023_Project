@@ -36,4 +36,5 @@ services:
         volumes:
             - ./config/grafana_datasources.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
             - ./config/grafana_dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+            - ./config/grafana_alert.yaml:/etc/grafana/provisioning/alerting/default.yaml:ro
             - ./dashboards:/opt/grafana/dashboards

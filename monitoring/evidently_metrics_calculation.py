@@ -4,55 +4,53 @@ import uuid
 import random
 import logging
 import datetime
-import xgboost as xgb
-import numpy as np
-import scipy
-import sklearn
-import mlflow
 
 import pytz
+import numpy as np
+import scipy
 import joblib
+import mlflow
 import pandas as pd
 import psycopg
+import sklearn
+import xgboost as xgb
 from prefect import flow, task, get_run_logger
 from evidently import ColumnMapping
-from evidently.report import Report
-
-from mlflow.data.pandas_dataset import PandasDataset
-from mlflow.tracking import MlflowClient
 from mlflow.entities import ViewType
-from mlflow.exceptions import MlflowException
-
-from sklearn.feature_extraction import DictVectorizer
-
+from mlflow.tracking import MlflowClient
+from evidently.report import Report
 # maybe also interesting (from my side of view)
-from evidently.metrics import(
+from evidently.metrics import (
     ColumnDriftMetric,
     DatasetDriftMetric,
     DatasetSummaryMetric,
     DatasetCorrelationsMetric,
     DatasetMissingValuesMetric
 )
+from mlflow.exceptions import MlflowException
+from mlflow.data.pandas_dataset import PandasDataset
+from sklearn.feature_extraction import DictVectorizer
 
 EVIDENTLY_REPORT_PATH = "./evidently/"
-DATA_PATH           = "../data/processed/"
-TRAIN_PATH          = f"{DATA_PATH}train.csv"
-VAL_PATH            = f"{DATA_PATH}val.csv"
-TEST_PATH           = f"{DATA_PATH}test.csv"
-PROBLEM_TRAIN_PATH  = f"{DATA_PATH}p_train.csv"
-PROBLEM_VAL_PATH    = f"{DATA_PATH}p_val.csv"
-PROBLEM_TEST_PATH   = f"{DATA_PATH}p_test.csv"
-FULL_TRAIN_PATH     = f"{DATA_PATH}full_train.csv"
-FULL_VAL_PATH       = f"{DATA_PATH}full_val.csv"
-FULL_TEST_PATH      = f"{DATA_PATH}full_test.csv"
+DATA_PATH = "../data/processed/"
+TRAIN_PATH = f"{DATA_PATH}train.csv"
+VAL_PATH = f"{DATA_PATH}val.csv"
+TEST_PATH = f"{DATA_PATH}test.csv"
+PROBLEM_TRAIN_PATH = f"{DATA_PATH}p_train.csv"
+PROBLEM_VAL_PATH = f"{DATA_PATH}p_val.csv"
+PROBLEM_TEST_PATH = f"{DATA_PATH}p_test.csv"
+FULL_TRAIN_PATH = f"{DATA_PATH}full_train.csv"
+FULL_VAL_PATH = f"{DATA_PATH}full_val.csv"
+FULL_TEST_PATH = f"{DATA_PATH}full_test.csv"
 
 MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
 MLFLOW_EXPERIMENT_NAME = "housing-prices-experiment"
 MLFLOW_MODEL_NAME = "housing-prices-regressor"
 
-CATEGORICAL = []#['x_lbt93', 'y_lbt93']
+CATEGORICAL = []  # ['x_lbt93', 'y_lbt93']
 NUMERICAL = ["area_living", "area_land", "n_rooms", "price", "year"]
 FEATURES = CATEGORICAL + NUMERICAL
+
 
 def add_features(
     df_train: pd.DataFrame, df_val: pd.DataFrame
@@ -79,9 +77,10 @@ def add_features(
     y_val = df_val["price"].values
     return X_train, X_val, y_train, y_val, dv
 
-#logging.basicConfig(
+
+# logging.basicConfig(
 #    level=logging.INFO, format="%(asctime)s [%(levelname)s]: %(message)s"
-#)
+# )
 
 SEND_TIMEOUT = 10
 rand = random.Random()
@@ -127,6 +126,7 @@ report = Report(
     ]
 )
 
+
 @task
 def prep_db():
     with psycopg.connect(
@@ -139,6 +139,7 @@ def prep_db():
             "host=localhost port=5432 dbname=test user=postgres password=example"
         ) as conn:
             conn.execute(create_table_statement)
+
 
 # using curr because we're going to insert values in the specific position of the cursor
 # create some report and derive needed values
@@ -182,20 +183,21 @@ def calculate_metrics_postgresql(curr, i, problematic_data):
         ),
     )
 
+
 @flow(log_prints=True)
 def batch_monitoring_backfill():
     prep_db()
     logger = get_run_logger()
     position = ["First", "Second", "Third"]
-    
+
     # simulate production usage of our batch service while using different data sets
-    logger.info("Start simulating production usage...")   
+    logger.info("Start simulating production usage...")
     with psycopg.connect(
         "host=localhost port=5432 dbname=test user=postgres password=example",
         autocommit=True,
     ) as conn:
         delta = 0
-        #logger.info("Processing data from {} data set...".format(PROBLEM_VAL_PATH))
+        # logger.info("Processing data from {} data set...".format(PROBLEM_VAL_PATH))
         logger.info("Processing data from %s..." % PROBLEM_VAL_PATH)
         problematic_data = pd.read_csv(PROBLEM_VAL_PATH)
         for i in range(0, 3):
@@ -203,7 +205,7 @@ def batch_monitoring_backfill():
                 calculate_metrics_postgresql(curr, delta, problematic_data)
                 delta += 10
             logger.info(f"{position[i]} run processed")
-            #print(f"data from {PROBLEM_VAL_PATH} sent")
+            # print(f"data from {PROBLEM_VAL_PATH} sent")
 
         logger.info("Processing data from %s ..." % VAL_PATH)
         problematic_data = pd.read_csv(VAL_PATH)
@@ -212,8 +214,8 @@ def batch_monitoring_backfill():
                 calculate_metrics_postgresql(curr, delta, problematic_data)
                 delta += 10
             logger.info(f"{position[i]} run processed")
-            #print(f"data from {VAL_PATH} sent")
-        
+            # print(f"data from {VAL_PATH} sent")
+
         logger.info("Processing data from %s ..." % TRAIN_PATH)
         problematic_data = pd.read_csv(TRAIN_PATH)
         for i in range(0, 3):
@@ -221,7 +223,8 @@ def batch_monitoring_backfill():
                 calculate_metrics_postgresql(curr, delta, problematic_data)
                 delta += 10
             logger.info(f"{position[i]} run processed")
-            #print(f"data from {TRAIN_PATH} sent")
+            # print(f"data from {TRAIN_PATH} sent")
+
 
 if __name__ == "__main__":
     batch_monitoring_backfill()

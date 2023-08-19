@@ -1,12 +1,12 @@
 import mlflow
-#import scipy
+# import scipy
 import xgboost as xgb
-
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 from sklearn.feature_extraction import DictVectorizer
 
 model_uri = "./models/models_mlflow"
 booster = mlflow.xgboost.load_model(model_uri)
+
 
 def prepare_features(house):
     features = {}
@@ -21,7 +21,7 @@ def prepare_features(house):
 def predict(features):
     dv = DictVectorizer()
     _ = dv.fit_transform(features)
-    
+
     X_pred = dv.transform(features)
     target = [features["price"]]
 
@@ -40,9 +40,7 @@ def predict_endpoint():
     features = prepare_features(house)
     pred = predict(features)
 
-    result = {
-        'price': pred
-    }
+    result = {'price': pred}
 
     return jsonify(result)
 

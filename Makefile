@@ -16,6 +16,7 @@ code:
 
 start_mlflow:
 	pipenv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+	#pipenv run mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root=s3://name-of-bucket
 
 start_prefect:
 	pipenv run prefect server start
@@ -51,7 +52,9 @@ clean:
 	pipenv --rm
 
 web-service:
+	pipenv run docker build -f ./web-service/Dockerfile -t housing-price-prediction-service:v1
 # cd web-service
 # docker build -t housing-price-prediction-service:v1 .
 # docker run -it --rm -p 9696:9696 housing-price-prediction-service:v1
 # python test.py
+# docker stop $(docker ps -a -q)

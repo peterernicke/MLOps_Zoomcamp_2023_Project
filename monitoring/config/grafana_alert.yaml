@@ -1,0 +1,105 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: Alert_Group
+      folder: Alert
+      interval: 1m
+      rules:
+        - uid: b6e88772-4ca5-4ad5-a8a4-ac70b8d07803
+          title: my_alert
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 1800
+                to: 0
+              datasourceUid: PCC52D03280B7034C
+              model:
+                editorMode: builder
+                format: table
+                hide: false
+                intervalMs: 1000
+                maxDataPoints: 43200
+                rawSql: 'SELECT prediction_drift FROM dummy_metrics LIMIT 50 '
+                refId: A
+                sql:
+                    columns:
+                        - parameters:
+                            - name: prediction_drift
+                              type: functionParameter
+                          type: function
+                    groupBy:
+                        - property:
+                            type: string
+                          type: groupBy
+                    limit: 50
+                table: dummy_metrics
+            - refId: B
+              relativeTimeRange:
+                from: 1800
+                to: 0
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params: []
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - B
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                hide: false
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                type: reduce
+            - refId: C
+              relativeTimeRange:
+                from: 1800
+                to: 0
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: B
+                hide: false
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          dashboardUid: a16057bc-1f7c-4f93-bdc9-fbb46a5eeae1
+          panelId: 2
+          noDataState: NoData
+          execErrState: Error
+          for: 5m
+          annotations:
+            __dashboardUid__: a16057bc-1f7c-4f93-bdc9-fbb46a5eeae1
+            __panelId__: "2"
+            description: No description
+            summary: No summary
+          isPaused: false
