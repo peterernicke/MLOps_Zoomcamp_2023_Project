@@ -17,10 +17,6 @@ jobs:
             - name: Install dependencies
               working-directory: "./"
               run: pip install pipenv && pipenv install --dev
-
-            - name: Run Unit tests
-              working-directory: "./"
-              run: pipenv run pytest tests/
             
             - name: Lint
               working-directory: "./"

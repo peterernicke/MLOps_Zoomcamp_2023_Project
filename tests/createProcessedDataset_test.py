@@ -1,6 +1,6 @@
 import os.path
 
-from . import orchestrate as orch
+import orchestrate as orch
 
 CSV_FILE = "./data/raw/housing-prices-35.csv"
 DATA_PATH = "./data/processed/"
