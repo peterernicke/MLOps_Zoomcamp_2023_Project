@@ -1,0 +1,27 @@
+name: CI Tests
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+            - name: Set up Python 3.11
+              uses: actions/setup-python@v2
+              with:
+                python-version: 3.11
+            
+            - name: Install dependencies
+              working-directory: "./"
+              run: pip install pipenv && pipenv install --dev
+
+            - name: Run Unit tests
+              working-directory: "./"
+              run: pipenv run pytest tests/
+            
+            - name: Lint
+              working-directory: "./"
+              run: pipenv run pylint --recursive=y .
