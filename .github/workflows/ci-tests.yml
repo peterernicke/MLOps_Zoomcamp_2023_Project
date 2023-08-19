@@ -16,7 +16,7 @@ jobs:
             
             - name: Install dependencies
               working-directory: "./"
-              run: pip install pipenv && pipenv install --dev
+              run: pip install pipenv pylint && pipenv install --dev
             
             - name: Lint
               working-directory: "./"
