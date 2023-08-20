@@ -15,7 +15,6 @@ import psycopg
 import sklearn
 import xgboost as xgb
 from prefect import flow, task, get_run_logger
-from evidently import ColumnMapping
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
 from evidently.report import Report
@@ -30,6 +29,8 @@ from evidently.metrics import (
 from mlflow.exceptions import MlflowException
 from mlflow.data.pandas_dataset import PandasDataset
 from sklearn.feature_extraction import DictVectorizer
+
+from evidently import ColumnMapping
 
 EVIDENTLY_REPORT_PATH = "./evidently/"
 DATA_PATH = "../data/processed/"

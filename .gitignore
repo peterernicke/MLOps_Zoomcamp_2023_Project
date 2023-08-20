@@ -1,4 +1,5 @@
 __pycache__/*
+.github/workflows/ci-tests.yml.orig
 data/processed/*
 data/raw/housing-prices-35.csv
 mlruns/*

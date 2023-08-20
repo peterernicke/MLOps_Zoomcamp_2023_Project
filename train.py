@@ -1,6 +1,6 @@
 import pickle
 import pathlib
-from datetime import date, datetime
+from datetime import date
 
 import mlflow
 import pandas as pd
@@ -20,9 +20,8 @@ import variables as v
 
 @flow(name='training_best_run_flow', log_prints=True)
 def get_best_run(mlflow_client):
-    # latest_versions = mlflow_client.get_latest_versions(name=MLFLOW_MODEL_NAME)
+    """Return the run_id, rsme, and stage of the best run"""
 
-    # get the registered run with the best rsme
     registered_models = mlflow_client.search_registered_models()
     best_run_id = ""
     best_rsme = 100000
@@ -72,6 +71,11 @@ def get_best_run(mlflow_client):
 
 @task(name='training_task_preparation')
 def prep_for_train(train_path, val_path, features, target):
+    """Preparation for the real training step.
+    Return DictVectorizer and other information for
+    training and validation.
+    """
+
     df_train = pd.read_csv(train_path)
     df_val = pd.read_csv(val_path)
 
@@ -97,7 +101,6 @@ def prep_for_train(train_path, val_path, features, target):
 
 
 @flow(name='training_flow_train')
-# def train_model(params, dv, train_path, train, val_path, valid, y_val, model_num_boost_round=10, model_early_stopping_rounds=10):
 def train_model(
     mlflow_client,
     params,
@@ -110,6 +113,7 @@ def train_model(
     model_num_boost_round=10,
     model_early_stopping_rounds=10,
 ):
+    """Train the xgboost-model with parameters of the preparation step."""
     report_type = "Train"
     df = pd.read_csv(train_path)
     dataset: PandasDataset = mlflow.data.from_pandas(df, source=train_path)
@@ -218,7 +222,3 @@ def training_flow() -> None:
     train_model(
         mlflow_client, params, dv, train_path, train, val_path, valid, y_val, 10, 10
     )
-
-
-if __name__ == "__main__":
-    training_flow()

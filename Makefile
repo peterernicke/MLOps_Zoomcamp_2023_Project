@@ -2,6 +2,7 @@ export PIPENV_VENV_IN_PROJECT := 1
 export PIPENV_VERBOSITY := -1
 
 prerequisites:
+	@echo "Building Python environment and unzipping dataset"
 	python3 -m pip install --upgrade pip
 	pip install --upgrade pipenv
 	pipenv install --python 3.11
@@ -11,17 +12,21 @@ start_env:
 	pipenv shell
 
 code:
+	@echo "Code formatting with black and isort"
 	black .
 	isort .
 
-start_mlflow:
+mlflow:
+	@echo "Running mlflow ui"
 	pipenv run mlflow ui --backend-store-uri sqlite:///mlflow.db
 	#pipenv run mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root=s3://name-of-bucket
 
-start_prefect:
+prefect:
+	@echo "Starting Prefect server"
 	pipenv run prefect server start
 
-start_deploy: ./data/raw/housing-prices-35.csv
+deploy: ./data/raw/housing-prices-35.csv
+	@echo "Starting workflow deployment with Prefect"
 	# if error: Work pool named 'zoompool' already exists. 
 	# Please try creating your work pool again with a different name.
 	# uncomment next line
@@ -30,19 +35,25 @@ start_deploy: ./data/raw/housing-prices-35.csv
 	pipenv run prefect --no-prompt deploy --all
 	pipenv run prefect worker start -p zoompool
 
-start_train: ./data/raw/housing-prices-35.csv
+train: ./data/raw/housing-prices-35.csv
+	@echo "Starting training"
 	pipenv run python orchestrate.py
 
-start_monitoring:
+monitoring:
+	@echo "Starting monitoring with Evidently and Grafana dashboards"
 	pipenv run docker-compose -f ./monitoring/docker-compose.yaml up --build
+	@echo "Open a new terminal and run"
+	@echo "cd monitoring"
+	@echo "python evidently_metrics_calculation.py"
 
-#start_monitoring2:
+#monitoring2:
 #	pipenv run python ./monitoring/evidently_metrics_calculation.py
 #   --> is not working... open new terminal and type
 #	cd monitoring
 #	python evidently_metrics_calculation.py
 
 clean:
+	@echo "Cleaning"
 	rm -rf __pycache__
 	rm -rf data/processed
 	rm -rf data/raw/housing-prices-35.csv
@@ -52,7 +63,15 @@ clean:
 	pipenv --rm
 
 web-service:
+	@echo "Creating docker container for model deployment (as web service)"
 	pipenv run docker build -f ./web-service/Dockerfile -t housing-price-prediction-service:v1
+	@echo "Open a new terminal and run"
+	@echo "cd web-service"
+	@echo "docker run -it --rm -p 9696:9696 housing-price-prediction-service:v1"
+	@echo "Open a new terminal and run"
+	@echo "python test.py"
+	@echo "To stop all running docker containers run"
+	@echo "docker stop $(docker ps -a -q)"
 # cd web-service
 # docker build -t housing-price-prediction-service:v1 .
 # docker run -it --rm -p 9696:9696 housing-price-prediction-service:v1

@@ -1,5 +1,5 @@
 import mlflow
-from prefect import flow, task
+from prefect import flow
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
 
@@ -8,6 +8,8 @@ import variables as v
 
 @flow(name='register_model_flow', log_prints=True)
 def register_model(mlflow_client):
+    """Register the latest run as model"""
+
     run = mlflow_client.search_runs(
         experiment_ids='1',
         filter_string="",
@@ -15,9 +17,7 @@ def register_model(mlflow_client):
         max_results=1,
     )
     run_id = run[0].info.run_id
-    # print(run_id)
     model_uri = f"runs:/{run_id}/models_mlflow"
-    # model_uri = f"runs:/{run_id}/model"
 
     registered_models = mlflow.search_registered_models()
 
@@ -37,7 +37,3 @@ def register_model(mlflow_client):
                     mlflow.register_model(model_uri=model_uri, name=v.MLFLOW_MODEL_NAME)
         except StopIteration:
             pass
-
-
-if __name__ == "__main__":
-    register_model(MlflowClient(tracking_uri=v.MLFLOW_TRACKING_URI))

@@ -1,8 +1,7 @@
-from datetime import date, datetime
+from datetime import datetime
 
 import mlflow
 from prefect import flow
-from evidently import ColumnMapping
 from evidently.report import Report
 from evidently.metrics import (
     ColumnDriftMetric,
@@ -11,11 +10,15 @@ from evidently.metrics import (
 )
 
 import variables as v
+from evidently import ColumnMapping
 
 
 @flow(name='monitoring_flow', log_prints=True)
-# def monitor_model(report_type, train_data, val_data, model, dv, train, valid):
 def monitor_model(report_type, train_data, val_data, run_id, dv, train, valid):
+    """Provide HTML Report and save that to the Evidently folder.
+    That function is used for train and test.
+    """
+
     today = datetime.now()
     today = f"{today.year}-{today.month:02d}-{today.day:02d}-{today.hour:02d}:{today.minute:02d}"
     report_name = f"Evidently{report_type}Report-{run_id}-{today}.html"
@@ -65,7 +68,3 @@ def monitor_model(report_type, train_data, val_data, run_id, dv, train, valid):
     print(
         f"share of missing values: {result['metrics'][2]['result']['current']['share_of_missing_values']}"
     )
-
-
-if __name__ == "__main__":
-    monitor_model(None, None, None, None, None, None, None)
