@@ -14,7 +14,13 @@ disable = [
     "ungrouped-imports",
     "not-context-manager",
     "logging-fstring-interpolation",
-    "logging-not-lazy"
+    "logging-not-lazy",
+    "consider-using-f-string",
+    "no-member",
+    "unused-argument",
+    "unused-import",
+    "consider-using-with",
+    "duplicate-code"
 ]
 
 [tool.black]

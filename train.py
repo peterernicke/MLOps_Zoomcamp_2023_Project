@@ -205,15 +205,7 @@ def training_flow() -> None:
 
     mlflow.set_experiment(v.MLFLOW_EXPERIMENT_NAME)
 
-    params = {
-        "learning_rate": 0.24672699526038375,  # <0,3
-        "max_depth": 21,  # <60
-        "min_child_weight": 0.4633648424343051,  # <0,6
-        "objective": "reg:squarederror",
-        "reg_alpha": 0.07214781548729281,
-        "reg_lambda": 0.08286020895000905,  # <0,25
-        "seed": 42,
-    }
+    params = v.BEST_PARAMS
 
     dv, train_path, train, val_path, valid, y_val = prep_for_train(
         v.TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE
