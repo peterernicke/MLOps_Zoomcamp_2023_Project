@@ -8,15 +8,6 @@ prerequisites:
 	pipenv install --python 3.11
 	pipenv run python ./scripts/unzipZipRaw.py
 
-start_env:
-	pipenv shell
-
-code:
-	@echo "Code formatting with black, isort, and pylint"
-	black .
-	isort .
-	pylint --recursive=y .
-
 mlflow:
 	@echo "Running mlflow ui"
 	pipenv run mlflow ui --backend-store-uri sqlite:///mlflow.db
@@ -35,10 +26,6 @@ deploy: ./data/raw/housing-prices-35.csv
 	pipenv run prefect work-pool create --type process zoompool
 	pipenv run prefect --no-prompt deploy --all
 	pipenv run prefect worker start -p zoompool
-
-train: ./data/raw/housing-prices-35.csv
-	@echo "Starting training"
-	pipenv run python orchestrate.py
 
 monitoring:
 	@echo "Starting monitoring with Evidently and Grafana dashboards"
@@ -63,6 +50,7 @@ web-service:
 	@echo "python test.py"
 	@echo "To stop all running docker containers run"
 	@echo "docker stop $(docker ps -a -q)"
+
 # cd web-service
 # docker build -t housing-price-prediction-service:v1 .
 # docker run -it --rm -p 9696:9696 housing-price-prediction-service:v1
@@ -78,3 +66,16 @@ clean:
 	rm -rf mlruns
 	rm -rf mlflow.db
 	pipenv --rm
+
+code:
+	@echo "Code formatting with black, isort, and pylint"
+	black .
+	isort .
+	pylint --recursive=y .
+
+start_env:
+	pipenv shell
+
+train: ./data/raw/housing-prices-35.csv
+	@echo "Starting training"
+	pipenv run python orchestrate.py
