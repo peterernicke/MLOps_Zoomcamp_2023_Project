@@ -6,7 +6,7 @@ from evidently.report import Report
 from evidently.metrics import (
     ColumnDriftMetric,
     DatasetDriftMetric,
-    DatasetMissingValuesMetric
+    DatasetMissingValuesMetric,
 )
 
 import variables as v

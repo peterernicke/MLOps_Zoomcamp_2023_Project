@@ -12,9 +12,10 @@ start_env:
 	pipenv shell
 
 code:
-	@echo "Code formatting with black and isort"
+	@echo "Code formatting with black, isort, and pylint"
 	black .
 	isort .
+	pylint --recursive=y
 
 mlflow:
 	@echo "Running mlflow ui"
