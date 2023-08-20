@@ -112,7 +112,8 @@ def main_flow() -> None:
     training.train_model(
         mlflow_client, "", dv, train_path, train, val_path, valid, y_val
     )
-    # report_type, run_id, dv, train, valid = training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val)
+    # report_type, run_id, dv, train, valid = training.train_model(
+    #   mlflow_client, "", dv, train_path, train, val_path, valid, y_val)
     # monitor.monitor_model(
     #        report_type,
     #        pd.read_csv(train_path),
@@ -153,7 +154,8 @@ def main_flow() -> None:
 
     # Retrain the model
     # print("Retrain the model")
-    # dv, train_path, train, val_path, valid, y_val = training.prep_for_train(v.PROBLEM_TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE)
+    # dv, train_path, train, val_path, valid, y_val = training.prep_for_train(
+    #   v.PROBLEM_TRAIN_PATH, v.VAL_PATH, v.FEATURES, v.TARGET_FEATURE)
     # training.train_model(mlflow_client, "", dv, train_path, train, val_path, valid, y_val, 12, 12)
     # Test new model
     # prediction.test_model(mlflow_client, None, v.TEST_PATH, v.PROBLEM_TRAIN_PATH)

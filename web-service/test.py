@@ -9,5 +9,5 @@ house = {
 }
 
 url = 'http://localhost:9696/predict'
-response = requests.post(url, json=house)
+response = requests.post(url, json=house, timeout=10)
 print(response.json())

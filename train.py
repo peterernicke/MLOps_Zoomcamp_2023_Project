@@ -37,7 +37,7 @@ def get_best_run(mlflow_client):
                 best_rsme = int(run.data.metrics['rmse'])
                 best_stage = "Production"
                 break
-            elif version.current_stage == "Staging":
+            if version.current_stage == "Staging":
                 if (best_stage == "") | (best_stage == "None"):
                     best_run_id = version.run_id
                     run = mlflow_client.get_run(version.run_id)

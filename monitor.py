@@ -9,8 +9,8 @@ from evidently.metrics import (
     DatasetMissingValuesMetric,
 )
 
-import variables as v
 from evidently import ColumnMapping
+import variables as v
 
 
 @flow(name='monitoring_flow', log_prints=True)

@@ -35,7 +35,7 @@ For the deployment of the flow i've adapted **prefect.yaml** file.
 
 **Third step** Start MLFlow server
 - open new terminal
-- **make start_mlflow**
+- **make mlflow**
 
 **Fourth step** Create work pool, deploy the flow and run the worker
 - open new terminal
@@ -52,16 +52,16 @@ For the deployment of the flow i've adapted **prefect.yaml** file.
     * the step "Installing dependencies from Pipfile.lock" needs some time
     * initialize Prefect
 
-- open seperate terminal and run **make start_mlflow**
+- open seperate terminal and run **make mlflow**
     * starts MLflow server
 
-- open seperate terminal and run **make start_prefect**
+- open seperate terminal and run **make prefect**
     * starts Prefect server
 
-- open seperate terminal and run **make start_deploy**
+- open seperate terminal and run **make deploy**
     * starts the workflow deployment with Prefect
 
-- open seperate terminal and run **make start_train**
+- open seperate terminal and run **make train**
     * starts the workflow
 
 - run **make clean** to clean the project environment

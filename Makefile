@@ -15,7 +15,7 @@ code:
 	@echo "Code formatting with black, isort, and pylint"
 	black .
 	isort .
-	pylint --recursive=y
+	pylint --recursive=y .
 
 mlflow:
 	@echo "Running mlflow ui"
@@ -53,16 +53,6 @@ monitoring:
 #	cd monitoring
 #	python evidently_metrics_calculation.py
 
-clean:
-	@echo "Cleaning"
-	rm -rf __pycache__
-	rm -rf data/processed
-	rm -rf data/raw/housing-prices-35.csv
-	rm -rf evidently
-	rm -rf mlruns
-	rm -rf mlflow.db
-	pipenv --rm
-
 web-service:
 	@echo "Creating docker container for model deployment (as web service)"
 	pipenv run docker build -f ./web-service/Dockerfile -t housing-price-prediction-service:v1
@@ -78,3 +68,13 @@ web-service:
 # docker run -it --rm -p 9696:9696 housing-price-prediction-service:v1
 # python test.py
 # docker stop $(docker ps -a -q)
+
+clean:
+	@echo "Cleaning"
+	rm -rf __pycache__
+	rm -rf data/processed
+	rm -rf data/raw/housing-prices-35.csv
+	rm -rf evidently
+	rm -rf mlruns
+	rm -rf mlflow.db
+	pipenv --rm

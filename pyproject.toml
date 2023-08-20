@@ -7,7 +7,14 @@ disable = [
     "missing-module-docstring",
     "invalid-name",
     "too-few-public-methods",
-    "too-many-nested-blocks"
+    "too-many-nested-blocks",
+    "too-many-arguments",
+    "too-many-locals",
+    "line-too-long",
+    "ungrouped-imports",
+    "not-context-manager",
+    "logging-fstring-interpolation",
+    "logging-not-lazy"
 ]
 
 [tool.black]

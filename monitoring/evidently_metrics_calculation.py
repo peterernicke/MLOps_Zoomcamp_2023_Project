@@ -1,23 +1,18 @@
-import io
-import time
-import uuid
 import random
-import logging
 import datetime
 
-import pytz
 import numpy as np
 import scipy
-import joblib
 import mlflow
 import pandas as pd
 import psycopg
 import sklearn
 import xgboost as xgb
-from prefect import flow, task, get_run_logger
-from mlflow.entities import ViewType
-from mlflow.tracking import MlflowClient
+from evidently import ColumnMapping
 from evidently.report import Report
+from mlflow.tracking import MlflowClient
+from prefect import flow, task, get_run_logger
+from sklearn.feature_extraction import DictVectorizer
 
 # maybe also interesting (from my side of view)
 from evidently.metrics import (
@@ -27,11 +22,6 @@ from evidently.metrics import (
     DatasetCorrelationsMetric,
     DatasetMissingValuesMetric,
 )
-from mlflow.exceptions import MlflowException
-from mlflow.data.pandas_dataset import PandasDataset
-from sklearn.feature_extraction import DictVectorizer
-
-from evidently import ColumnMapping
 
 EVIDENTLY_REPORT_PATH = "./evidently/"
 DATA_PATH = "../data/processed/"
@@ -78,11 +68,6 @@ def add_features(
     y_train = df_train["price"].values
     y_val = df_val["price"].values
     return X_train, X_val, y_train, y_val, dv
-
-
-# logging.basicConfig(
-#    level=logging.INFO, format="%(asctime)s [%(levelname)s]: %(message)s"
-# )
 
 SEND_TIMEOUT = 10
 rand = random.Random()
